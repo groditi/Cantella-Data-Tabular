@@ -21,6 +21,10 @@ has should_coerce => (
   isa => 'Bool',
 );
 
+
+# I could have set the writer using:
+#  writer => { set_value => sub { ... } },
+# and I may, still, but I'm wondering whether it's too DWIMy or just right
 sub set_value {
   my ($self, $value) = @_;
   if( $self->has_constraint ){
