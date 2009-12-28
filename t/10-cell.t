@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 
-use Test::More tests => 9;
+use Test::More tests => 14;
 use Test::Exception;
 
 use Moose::Meta::TypeConstraint;
@@ -22,6 +22,30 @@ $constraint->coercion($coercion);
 my $invalid_value = undef;
 my $valid_value = 'String';
 my $coercible_value = 'String';
+
+lives_ok{
+  my $cell = Cantella::Data::Tabular::Cell->new;
+  my $value = $cell->coerce_value_and_check_constraint($valid_value);
+  is($value, $valid_value, 'defined_value check');
+} 'defined value on coerce_value_and_check_constraint';
+
+dies_ok{
+  my $cell = Cantella::Data::Tabular::Cell->new(
+    constraint => $constraint,
+  );
+  $cell->coerce_value_and_check_constraint($coercible_value);
+} 'constraint with no coerce on coerce_value_and_check_constraint';
+
+lives_ok{
+  my $cell = Cantella::Data::Tabular::Cell->new(
+    constraint => $constraint,
+    should_coerce => 1,
+  );
+  my $value = $cell->coerce_value_and_check_constraint($coercible_value);
+  is(${ $value }, ${ \ $coercible_value }, 'coercible_value coercion');
+} 'coerce on set_value';
+
+###
 
 lives_ok{
   Cantella::Data::Tabular::Cell->new(value => $valid_value);
