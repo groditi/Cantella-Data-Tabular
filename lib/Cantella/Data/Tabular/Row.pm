@@ -51,7 +51,7 @@ sub set_value {
   $self->get_cell($x)->set_value($value);
 }
 
-__PACKAGE__->make_immutable;
+__PACKAGE__->meta->make_immutable;
 
 1;
 
