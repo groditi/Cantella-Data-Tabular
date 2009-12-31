@@ -2,7 +2,7 @@ package Cantella::Data::Tabular::Row;
 
 use Moose;
 
-has _cells => (
+has cells => (
   is => 'ro',
   isa => 'ArrayRef[Cantella::Data::Tabular::Cell]',
   required => 1,
@@ -10,27 +10,27 @@ has _cells => (
 );
 
 sub width {
-  return scalar @{ shift->_cells };
+  return scalar @{ shift->cells };
 }
 
 sub get_cell {
   my($self, $x) = @_;
-  die("OUT OF BOUNDS: column ${x}") unless( $self->width > $x );
-  return $self->_cells->[$x];
+  die("OUT OF BOUNDS: column ${x}") unless $self->width > $x;
+  return $self->cells->[$x];
 }
 
 sub pad {
   my($self, $x) = @_;
   return if $x < $self->width;
   for my $i ( $self->width .. $x ){
-    $self->_cells->[$i] = Cantella::Data::Tabular::Cell->new;
+    $self->cells->[$i] = Cantella::Data::Tabular::Cell->new;
   }
 }
 
 sub set_cell {
   my($self, $x, $cell) = @_;
   $self->pad($x - 1) if $self->width < $x;
-  return $self->_cells->[$x] = $cell;
+  return $self->cells->[$x] = $cell;
 }
 
 sub has_value {
@@ -42,7 +42,7 @@ sub has_value {
 sub get_value {
   my($self, $x) = @_;
   my $cell = $self->get_cell($x);
-  return $cell->has_value ? $cell->value : undef;
+  return $cell->has_value ? $cell->get_value : undef;
 }
 
 sub set_value {
