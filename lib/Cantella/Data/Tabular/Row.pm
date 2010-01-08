@@ -60,9 +60,9 @@ __PACKAGE__->meta->make_immutable;
 
 __END__;
 
-=head1 Cantella::Data::Tabular::Row
+=head1 NAME
 
-Row object for Cantella::Data::Tabular
+Cantella::Data::Tabular::Row - Row object
 
 =head1 SYNOPSIS
 
