@@ -2,6 +2,7 @@ package Cantella::Data::Tabular::Table;
 
 use Moose;
 use List::Util ();
+use Cantella::Data::Tabular::Row;
 
 has header_row => (
   isa => 'Cantella::Data::Tabular::Row',
@@ -54,7 +55,7 @@ sub get_cell {
 
 sub set_cell {
   my($self, $y, $x, $cell) = @_;
-  $self->pad($y) if $self->row_count < $y;
+  $self->pad($y) unless $self->row_count > $y;
   return $self->get_row($y)->set_cell($x, $cell);
 }
 
@@ -70,9 +71,11 @@ sub get_value {
 
 sub set_value {
   my($self, $y, $x, $value) = @_;
-  $self->pad($y) if $self->row_count < $y;
+  $self->pad($y) unless $self->row_count > $y;
   return $self->get_row($y)->set_value($x, $value);
 }
+
+##Should header cells be forced to have 'Str' as a constraint?
 
 around get_header_row => sub {
   my $orig = shift;
@@ -118,9 +121,9 @@ __PACKAGE__->meta->make_immutable;
 
 __END__;
 
-=head1 Cantella::Data::Tabular::Table
+=head1 NAME
 
-Table object for Cantella::Data::Tabular
+Cantella::Data::Tabular::Table - Table object
 
 =head1 SYNOPSYS
 
