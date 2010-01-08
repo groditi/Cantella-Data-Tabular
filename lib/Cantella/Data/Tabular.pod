@@ -1,0 +1,23 @@
+=head1 NAME
+
+Cantella::Data::Tabular - A simple library for working with tabular data
+
+=head1 DESCRIPTION
+
+The aim of this library is to become a solid foundation for working with
+and displaying tabular data in a variety of formats.
+
+=head1 SYNOPSYS
+
+=head1 AUTHOR
+
+Guillermo Roditi (groditi) E<lt>groditi@cpan.orgE<gt>
+
+=head1 COPYRIGHT AND LICENSE
+
+This software is copyright (c) 2009 by Guillermo Roditi.
+
+This is free software; you can redistribute it and/or modify it under
+the same terms as the Perl 5 programming language system itself.
+
+=cut
