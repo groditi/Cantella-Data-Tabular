@@ -58,17 +58,19 @@ sub coerce_value_and_check_constraint {
 
 __PACKAGE__->meta->make_immutable;
 
+1;
+
 __END__;
 
-=head1 Cantella::Data::Tabular::Cell
+=head1 NAME
 
-Cell object for Cantella::Data::Tabular
+Cantella::Data::Tabular::Cell - Cell object
 
 =head1 SYNOPSIS
 
     my $cell = Cantella::Data::Tabular::Cell->new(
       value => 'foo',
-      constraint
+      constraint => 'Str', #automatically coerced from name to instance
     );
 
 =head1 ATTRIBUTES
