@@ -13,9 +13,9 @@ class_type Row, { class => 'Cantella::Data::Tabular::Row' };
 
 __END__;
 
-=head1 Cantella::Data::Tabular::Types
+=head1 NAME
 
-Types Library for Cantella::Data::Tabular
+Cantella::Data::Tabular::Types - Types library
 
 =head1 SYNOPSIS
 
