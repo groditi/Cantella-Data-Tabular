@@ -1,9 +1,11 @@
 package Cantella::Data::Tabular::Types;
 
-use MooseX::Types -declare => [qw(CellValue Cell Row)];
-use MooseX::Types::Moose qw(Defined);
+use MooseX::Types -declare => [qw(CellValue Cell Row HeaderStr)];
+use MooseX::Types::Moose qw(Defined Str);
 
 subtype CellValue, as Defined;
+
+subtype HeaderStr, as Str;
 
 class_type Cell, { class => 'Cantella::Data::Tabular::Cell' };
 
@@ -27,6 +29,10 @@ Cantella::Data::Tabular::Types - Types library
 =head2 CellValue
 
 Subtype of 'Defined'
+
+=head2 HeaderStr
+
+Subtype of 'Str'
 
 =head2 Cell
 
