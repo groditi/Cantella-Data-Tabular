@@ -9,6 +9,11 @@ has cells => (
   default => sub { [ ] },
 );
 
+sub get_cells {
+  my $self = shift;
+  return @{ $self->cells };
+}
+
 sub width {
   return scalar @{ shift->cells };
 }
@@ -86,7 +91,7 @@ Cantella::Data::Tabular::Row - Row object
 
 A read-only attribute composed of an ArrayRef of zero or more
 L<Cell|Cantella::Data::Tabular::Cell> objects. This is a private attribute
-and should not be accessed directly.
+and should not be accessed directly. See L</get_cells>
 
 The following methods are associated with this attribute:
 
@@ -132,6 +137,18 @@ Constructor.
 
 Creates cells for every column in the row up to and including C<$max_index>.
 Index numbers start at zero.
+
+=head2 get_cells
+
+=over 4
+
+=item B<arguments:> none
+
+=item B<return value:> C<@cell>
+
+=back
+
+Return a list with all cells in this row;
 
 =head2 get_cell
 

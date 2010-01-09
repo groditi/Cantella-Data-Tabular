@@ -18,6 +18,11 @@ has rows => (
   default => sub { [] },
 );
 
+sub get_rows {
+  my $self = shift;
+  return @{ $self->rows };
+}
+
 sub height {
   my $self = shift;
   return ($self->has_header_row ? 1 : 0) + $self->row_count;
@@ -133,7 +138,7 @@ Cantella::Data::Tabular::Table - Table object
 
 A read-only attribute composed of an ArrayRef of zero or more
 L<Row|Cantella::Data::Tabular::Row> objects. This is a private attribute
-and should not be accessed directly.
+and should not be accessed directly. (See L</get_rows>)
 
 The following methods are associated with this attribute:
 
@@ -226,6 +231,18 @@ table not including the header row.
 Creates rows up to an including C<$max_y_index> if they don't already exist.
 If the optional C<$max_x_index> argument is given, it will call each row's
 L<pad|Cantella::Data::Tabular::Row/pad> method. Index numbers start at zero.
+
+=head2 get_rows
+
+=over 4
+
+=item B<arguments:> none
+
+=item B<return value:> C<@cells>
+
+=back
+
+Return a list of all rows.
 
 =head2 get_row
 
