@@ -1,16 +1,13 @@
 package Cantella::Data::Tabular::Render::PlainText;
 
 use Moose;
+use List::Util 'sum';
 use MooseX::Types::Moose qw(Value Str Num Int);
 use MooseX::Types::DateTime qw(DateTime);
+use Cantella::Data::Tabular::Types qw(HeaderStr);
+
 use MooseX::TypeMap;
 use MooseX::TypeMap::Entry;
-
-has table => (
-  is => 'ro',
-  isa => 'Cantella::Data::Tabular::Table',
-  required => 1,
-);
 
 has value_type_to_stringifier_map => (
   is => 'rw',
@@ -48,11 +45,15 @@ has value_type_to_format_options => (
     return MooseX::TypeMap->new(
       subtype_entries => [
         MooseX::TypeMap::Entry->new(
-          data => { pad_format => '%-*2$s'},
+          data => { align => 'left' },
           type_constraint => Value,
         ),
         MooseX::TypeMap::Entry->new(
-          data => { pad_format => '%*2$s'},
+          data => { align => 'center' },
+          type_constraint => HeaderStr,
+        ),
+        MooseX::TypeMap::Entry->new(
+          data => { align => 'right' },
           type_constraint => Num,
         ),
       ]
@@ -61,91 +62,131 @@ has value_type_to_format_options => (
 );
 
 #temp method, obvi
-sub print_data {
-  my $self = shift;
-  my $values = $self->get_formatted_table_data;
-  for my $row_values ( @$values ){
+sub render {
+  my ($self, $table) = @_;
+
+  my $raw = $self->get_table_value_strings($table);
+  my $widths = $self->calc_col_widths($raw);
+  my $padded = $self->pad_values_to_column_widths($raw, $widths);
+
+  my $corner = '++';
+  my $vertical = '|';
+  my $horizontal = '-';
+
+  my $div_width = $self->get_value_width($vertical);
+  my $table_width = $div_width + sum(map{ $_ + $div_width } @$widths);
+  my $horiz_count = $table_width - ($self->get_value_width($corner) * 2);
+  my $horizontal_rule = join('', $corner, ($horizontal x $horiz_count), $corner);
+
+  my @output_lines;
+  push(@output_lines, $horizontal_rule);
+  if( defined $padded->{headers}){
+    my $row = join('|', '', @{$padded->{headers}}, '');
+    push(@output_lines, $row);
+    push(@output_lines, $horizontal_rule);
+  }
+  for my $row_values ( @{$padded->{rows}} ){
+    #TODO: make divider configurable;
+    #TODO: Possibly add margin support in here somewhere
     my $row = join('|', '', @$row_values, '');
-    print $row."\n";
+    push(@output_lines, $row)
   }
+  push(@output_lines, $horizontal_rule);
+  return @output_lines;
 }
 
-sub get_formatted_table_data {
-  my($self) = @_;
+sub pad_values_to_column_widths {
+  my($self, $values, $widths) = @_;
 
-  my $table_width = $self->table->width;
-  my $value_strings = $self->get_table_data_value_strings;
-
-  #find column widths
-  my @col_widths;
-  for my $x (0 .. ($table_width - 1) ){
-    my($min_col_width, $max_col_width) = (0,0);
-    for my $row ( @$value_strings ){
-      next unless defined $row->[$x];
-      my $cell_width = $self->get_value_width($row->[$x]->[0]);
-      $min_col_width = $cell_width if !defined($max_col_width) || $cell_width < $min_col_width;
-      $max_col_width = $cell_width if !defined($max_col_width) || $cell_width > $max_col_width;
+  my %values = ( rows => [] );
+  if( defined $values->{headers} ){
+    my @padded;
+    my $x = 0;
+    for my $cell ( @{ $values->{headers} } ) {
+      my ($string, $options) = ($cell->[0], { align => 'center', %{$cell->[1]} } );
+      push(@padded, $self->pad_string_to_width($string, $widths->[$x], $options) );
+      $x++;
     }
-    push(@col_widths, [$min_col_width, $max_col_width]);
+    #add in empty cells;
+    push(@padded, join('',(' ' x $widths->[$_]))) for $x .. $#$widths;
+    $values{headers} = \@padded;
   }
 
-  my @final_values;
-  for my $row ( @$value_strings ){
-    my @row_values;
-    for my $x ( 0 .. ($table_width - 1) ) { #ugly but necessary
-      my ($string, $options) = (defined($row->[$x]) ? @{ $row->[$x] } : ('', {}) );
-      $options->{pad_to_width} = $col_widths[$x][1] unless defined($options->{pad_to_width});
-      push(@row_values, $self->format_value_string($string, $options) );
+  for my $row ( @{ $values->{rows}} ){
+    my @padded;
+    my $x = 0;
+    for my $cell ( @$row ) {
+      my ($string, $options) = @$cell;
+      push(@padded, $self->pad_string_to_width($string, $widths->[$x], $options) );
+      $x++;
     }
-    push(@final_values, \@row_values);
+    #add in empty cells;
+    push(@padded, join('',(' ' x $widths->[$_]))) for $x .. $#$widths;
+    push(@{ $values{rows} }, \@padded);
   }
-  return \@final_values;
+
+  return \%values;
 }
 
-sub format_value_string {
-  my($self, $value_string, $options) = @_;
-
-  #I hope to in the future have many more things to do here, but for now,
-  # this will have to do.
-  my($margin_left, $margin_right) = (0, 0);
-  if( defined $options->{margin} ){
-    $margin_left = $margin_right = $options->{margin};
+sub calc_col_widths {
+  my($self, $values) = @_;
+  my @max_widths;
+  if( defined $values->{headers} ){
+    @max_widths = map { $self->get_value_width($_->[0]) } @{$values->{headers}};
   }
-  $margin_left = $options->{margin_left} if defined $options->{margin_left};
-  $margin_right = $options->{margin_right} if defined $options->{margin_right};
-
-  my $pad_width = $options->{pad_to_width};
-  my $pad_format = exists($options->{pad_format}) ? $options->{pad_format} : '%*2$s';
-  my $padded_str = sprintf($pad_format, $value_string, $pad_width);
-  my $margined_str = join('', (' ' x $margin_left), $padded_str, (' ' x $margin_right));
-
-  return $margined_str;
+  for my $row ( @{$values->{rows}} ){
+    my $x = 0;
+    for my $cell( @$row ){
+      my $width = $self->get_value_width( $cell->[0] );
+      $max_widths[$x] = $width if !defined($max_widths[$x]) || $width > $max_widths[$x];
+      $x++;
+    }
+  }
+  return \@max_widths;
 }
 
-sub get_table_data_value_strings {
-  my($self) = @_;
-
-  my @value_strings;
-  my $row_count = $self->table->row_count;
-  for my $y ( 0 .. ($row_count - 1) ){
-    push(@value_strings, $self->get_row_value_strings($y));
+sub pad_string_to_width {
+  my($self, $value_string, $width, $options) = @_;
+  if( defined $options->{pad_format}) {
+    return sprintf($options->{pad_format}, $value_string, $width);
+  } elsif( defined $options->{align} ){
+    if( $options->{align} eq 'left' ){
+      return sprintf('%-*2$s', $value_string, $width);
+    } elsif( $options->{align} eq 'right' ){
+      return sprintf('%*2$s', $value_string, $width);
+    } elsif( $options->{align} eq 'center' ){
+      my $str_width = $self->get_value_width($value_string);
+      if( $str_width < $width ){
+        my $space = $width - $str_width;
+        my $left = $space % 2 ? (($space + 1) / 2) : ($space / 2);
+        my $left_padded = sprintf('%*2$s', $value_string, $str_width + $left);
+        return sprintf('%-*2$s', $left_padded, $width);
+      }
+    }
   }
-  return \@value_strings;
+  return sprintf('%*2$s', $value_string, $width);
+}
+
+sub get_table_value_strings {
+  my($self, $table) = @_;
+  my %values = (
+    rows => [ map{ $self->get_row_value_strings($_) } $table->get_rows ],
+  );
+
+  $values{headers} = $self->get_row_value_strings($table->get_header_row)
+    if $table->has_header_row;
+
+  return \%values;
 }
 
 sub get_row_value_strings {
-  my($self, $y) = @_;
-  my @value_strings;
-  my $width = $self->table->get_row($y)->width;
-  for my $x ( 0 .. ($width - 1) ){
-    push(@value_strings, $self->get_cell_value_string($y, $x));
-  }
+  my($self, $row) = @_;
+  my @value_strings = map { $self->get_cell_value_string($_) } $row->get_cells;
   return \@value_strings;
 }
 
 sub get_cell_value_string {
-  my($self, $y, $x) = @_;
-  my $cell = $self->table->get_cell($y, $x);
+  my($self, $cell) = @_;
 
   my $value;
   my %format_options;
@@ -185,3 +226,16 @@ sub get_value_width {
 1
 
 __END__;
+
+  #I hope to in the future have many more things to do here, but for now,
+  # this will have to do.
+  my($margin_left, $margin_right) = (0, 0);
+  if( defined $options->{margin} ){
+    $margin_left = $margin_right = $options->{margin};
+  }
+  $margin_left = $options->{margin_left} if defined $options->{margin_left};
+  $margin_right = $options->{margin_right} if defined $options->{margin_right};
+
+  my $margined_str = join('', (' ' x $margin_left), $padded_str, (' ' x $margin_right));
+
+  return $margined_str;

@@ -5,6 +5,7 @@ use warnings;
 
 use MooseX::Types::Moose qw(Num Int Str);
 use MooseX::Types::DateTime qw(DateTime);
+use Cantella::Data::Tabular::Types qw(HeaderStr);
 
 use Cantella::Data::Tabular::Cell;
 use Cantella::Data::Tabular::Table;
@@ -12,7 +13,29 @@ use Cantella::Data::Tabular::Table;
 use Cantella::Data::Tabular::Render::PlainText;
 
 my $table = Cantella::Data::Tabular::Table->new;
-my $num_cell =
+$table->set_header_cell(
+  0,
+  Cantella::Data::Tabular::Cell->new(
+    constraint => Str,
+    value => 'Column A'
+  )
+);
+
+$table->set_header_cell(
+  1,
+  Cantella::Data::Tabular::Cell->new(
+    constraint => Str,
+    value => 'Column B is cool'
+  )
+);
+
+$table->set_header_cell(
+  3,
+  Cantella::Data::Tabular::Cell->new(
+    constraint => HeaderStr,
+    value => 'x'
+  )
+);
 
 $table->set_cell(
   (0,0),
@@ -66,6 +89,9 @@ $table->set_cell(
   )
 );
 
-Cantella::Data::Tabular::Render::PlainText->new(
-  table => $table
-)->print_data;
+my $renderer = Cantella::Data::Tabular::Render::PlainText->new;
+my @lines = $renderer->render($table);
+
+print "\n";
+print "${_}\n" for @lines;
+print "\n";
