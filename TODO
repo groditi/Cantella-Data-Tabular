@@ -1,0 +1,19 @@
+
+::Cell
+- Better constructor to set the type / value / props
+- cloning?
+
+::Row
+- Smart row cloning for tables with homogenous content
+
+::Table
+- Better cell setting / building. Make pad could support TCs?
+- Better constructors
+- Less verbose interface for building the table
+
+::Renderer::PlainText
+- Cells that are more than one line tall
+- Customizable horizontal / vertical / separator / corner characters
+- Cell padding
+- Horizontal rules in the table, repeating headers
+- Footers?
