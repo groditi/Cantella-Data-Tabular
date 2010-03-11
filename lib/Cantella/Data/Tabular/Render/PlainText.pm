@@ -5,6 +5,7 @@ use List::Util qw/sum max/;
 use MooseX::Types::Moose qw(Value Str Num Int);
 use MooseX::Types::DateTime qw(DateTime);
 use Cantella::Data::Tabular::Types qw(HeaderStr);
+use MooseX::Types::Common::String qw/SimpleStr/;
 
 use MooseX::TypeMap;
 use MooseX::TypeMap::Entry;
@@ -14,6 +15,27 @@ has newline_string => (
   isa => Str,
   required => 1,
   default => sub { "\n" },
+);
+
+has corner_string => (
+  is => 'rw',
+  isa => SimpleStr,
+  required => 1,
+  default => sub { "++" },
+);
+
+has vertical_divider => (
+  is => 'rw',
+  isa => SimpleStr,
+  required => 1,
+  default => sub { "||" },
+);
+
+has horizontal_divider => (
+  is => 'rw',
+  isa => SimpleStr,
+  required => 1,
+  default => sub { "=" },
 );
 
 has value_type_to_stringifier_map => (
@@ -82,59 +104,65 @@ sub render {
 
   my $value_opts_grid = $self->prepare_table($table);
   my $dimensions = $self->calculate_table_dimensions($value_opts_grid);
-  my $padded_values = $self->pad_table_values($value_opts_grid, $dimensions);
 
   #eventually, these will be customizable
-  my $corner = '++';
-  my $vertical = '|';
-  my $horizontal = '-';
+  my $corner = $self->corner_string;
+  my $h_div = $self->horizontal_divider;
+  my $v_div = $self->vertical_divider;
+  my $h_div_width = $self->get_string_width($h_div);
+  my $v_div_width = $self->get_string_width($v_div);
+  my $corner_width = $self->get_string_width($corner);
 
-  my @widths = map { $_->[1]} @{ $dimensions->[0] };
-  my $div_width = $self->get_string_width($vertical);
-  my $table_width = $div_width + sum(map{ $_ + $div_width } @widths);
-  my $horiz_count = $table_width - ($self->get_string_width($corner) * 2);
-  my $horizontal_rule = join('', $corner, ($horizontal x $horiz_count), $corner);
+  my @widths = map { $_->[1]} @{ $dimensions->{rows}[0] };
+  my $table_width = $v_div_width + sum(map{ $_ + $v_div_width } @widths);
+  my $h_rule_line = join(
+    '',
+    $corner, ($h_div x (($table_width  / $h_div_width ) - ($corner_width * 2)) ), $corner
+  );
 
   my @output_lines;
-  push(@output_lines, $horizontal_rule);
-  if( defined $padded_values->{headers}){
-    my $height = shift(@$dimensions)->[0][0];
-    for my $line_num ( 1 .. $height ){
-      my @row_line_segments = map { $_->[ $line_num - 1] } @{$padded_values->{headers}};
-      my $row = join('|', '', @row_line_segments, '');
-      push(@output_lines, $row);
-    }
-    push(@output_lines, $horizontal_rule);
+  push(@output_lines, $h_rule_line);
+  if( my $values = delete $value_opts_grid->{headers}){
+    my $header_dimensions = delete $dimensions->{headers};
+    push(@output_lines, $self->render_row($values, $header_dimensions));
+    push(@output_lines, $h_rule_line);
   }
-  for my $row_values ( @{$padded_values->{rows}} ){
-    my $height = shift(@$dimensions)->[0][0];
-    for my $line_num ( 1 .. $height ){
-      my @row_line_segments = map { $_->[ $line_num - 1] } @$row_values;
-      my $row = join('|', '', @row_line_segments, '');
-      push(@output_lines, $row);
-    }
-    push(@output_lines, $horizontal_rule);
+  for my $row_values ( @{$value_opts_grid->{rows}} ){
+    my $row_dimensions = shift(@{ $dimensions->{rows} });
+    push(@output_lines, $self->render_row($row_values, $row_dimensions));
+    push(@output_lines, $h_rule_line);
   }
   return @output_lines;
 }
 
+sub render_row {
+  my($self, $values, $dimensions) = @_;
+  my $divider = $self->vertical_divider;
+  my $padded = $self->pad_row_values($values, $dimensions);
 
+  my @output;
+  for my $line_num ( 0 .. ( $dimensions->[0][0] - 1 ) ){
+    my @lines = map { $_->[ $line_num ] } @$padded;
+    push(@output, join($divider, '', @lines, '') );
+  }
+  return join($self->newline_string, @output);
+}
 
 sub calculate_table_dimensions {
   my($self, $values) = @_;
-  my @max_heights;
-  my @max_widths;
 
+  my @max_widths;
+  my $header_height;
   if( defined $values->{headers} ){
     my @header_dimensions;
     for my $header_value ( @{$values->{headers}} ){
       push(@header_dimensions, $self->calc_value_dimensions($header_value) );
     }
-    my $row_height =  max(map { $_->[0] } @header_dimensions);
+    $header_height = max(map { $_->[0] } @header_dimensions);
     @max_widths = map { $_->[1] } @header_dimensions;
-    push(@max_heights, $row_height);
   }
 
+  my @max_heights;
   for my $row ( @{$values->{rows}} ){
     my $x = 0;
     my $row_height = 1;
@@ -149,13 +177,15 @@ sub calculate_table_dimensions {
     push(@max_heights, $row_height);
   }
 
-  my @dimensions;
+  my %dimensions = (rows => []);
+  if( defined $header_height ){
+    $dimensions{headers} = [ map { [$header_height, $_] } @max_widths ];
+  }
   for my $height ( @max_heights ){
-    my @row_dimensions = map { [$height, $_] } @max_widths;
-    push(@dimensions, \@row_dimensions);
+    push(@{ $dimensions{rows} }, [ map { [$height, $_] } @max_widths ]);
   }
 
-  return \@dimensions;
+  return \%dimensions;
 }
 
 sub calc_value_dimensions {
@@ -176,47 +206,16 @@ sub calc_value_dimensions {
   return $value_dimensions;
 }
 
-sub pad_table_values {
-  my($self, $values, $dimensions) = @_;
-
-  my $num_cols = max(map { scalar(@$_) } @$dimensions );
-  my %padded_values = ( rows => [] );
-  my $y = 0;
-  if( defined $values->{headers} ){
-    my @padded;
-    my $x = 0;
-    for my $cell ( @{ $values->{headers} } ) {
-      my ($string, $options) = @$cell;
-      push(@padded, $self->pad_string($string, $dimensions->[$y][$x], $options));
-      $x++;
-    }
-    #add in empty cells;
-    while( $x < $num_cols){
-      push(@padded, $self->pad_string('', $dimensions->[$y][$x], {}));
-      $x++;
-    }
-    $y++;
-    $padded_values{headers} = \@padded;
+sub pad_row_values {
+  my($self, $row, $dimensions) = @_;
+  my @padded;
+  my $x = 0;
+  for my $cell (  (@$row, ((['', {}]) x (@$dimensions - @$row)) ) ) {
+    my ($string, $options) = @$cell;
+    push(@padded, $self->pad_string($string, $dimensions->[$x], $options) );
+    $x++;
   }
-
-  for my $row ( @{ $values->{rows}} ){
-    my @padded;
-    my $x = 0;
-    for my $cell ( @$row ) {
-      my ($string, $options) = @$cell;
-      push(@padded, $self->pad_string($string, $dimensions->[$y][$x], $options) );
-      $x++;
-    }
-    #add in empty cells;
-    while( $x < $num_cols){
-      push(@padded, $self->pad_string('', $dimensions->[$y][$x], {}));
-      $x++;
-    }
-    $y++;
-    push(@{ $padded_values{rows} }, \@padded);
-  }
-
-  return \%padded_values;
+  return \@padded;
 }
 
 sub pad_string {
