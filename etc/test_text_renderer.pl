@@ -16,7 +16,7 @@ my $table = Cantella::Data::Tabular::Table->new;
 $table->set_header_cell(
   0,
   Cantella::Data::Tabular::Cell->new(
-    constraint => Str,
+    constraint => HeaderStr,
     value => 'Column A'
   )
 );
@@ -24,8 +24,8 @@ $table->set_header_cell(
 $table->set_header_cell(
   1,
   Cantella::Data::Tabular::Cell->new(
-    constraint => Str,
-    value => 'Column B is cool'
+    constraint => HeaderStr,
+    value => "Column B has a\nlong name"
   )
 );
 
@@ -62,8 +62,8 @@ $table->set_cell(
 $table->set_cell(
   (1,0),
   Cantella::Data::Tabular::Cell->new(
-    constraint => Str,
-    value => 'xyx'
+    constraint => Int,
+    value => 123
   )
 );
 
@@ -89,7 +89,31 @@ $table->set_cell(
   )
 );
 
+$table->set_cell(
+  (1,4),
+  Cantella::Data::Tabular::Cell->new(
+    constraint => Str,
+    value => "A long\nmulti\nline\nvalue\n"
+  )
+);
+
 my $renderer = Cantella::Data::Tabular::Render::PlainText->new;
+my $type_map = $renderer->value_type_to_format_options;
+if( my $type = $type_map->find_matching_entry(DateTime) ){
+  $type->data->{valign} = 'middle';
+}
+
+if( my $type = $type_map->find_matching_entry(Int) ){
+  $type->data->{valign} = 'bottom';
+  $type->data->{padding_bottom} = 2;
+}
+
+if( my $type = $type_map->find_matching_entry(HeaderStr) ){
+  $type->data->{valign} = 'bottom';
+  $type->data->{padding_right} = 5;
+  $type->data->{padding_top} = 2;
+}
+
 my @lines = $renderer->render($table);
 
 print "\n";
