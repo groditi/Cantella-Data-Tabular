@@ -98,7 +98,6 @@ has value_type_to_format_options => (
   }
 );
 
-#temp method, obvi
 sub render {
   my ($self, $table) = @_;
 
@@ -156,7 +155,7 @@ sub calculate_table_dimensions {
   if( defined $values->{headers} ){
     my @header_dimensions;
     for my $header_value ( @{$values->{headers}} ){
-      push(@header_dimensions, $self->calc_value_dimensions($header_value) );
+      push(@header_dimensions, $self->calculate_value_dimensions($header_value) );
     }
     $header_height = max(map { $_->[0] } @header_dimensions);
     @max_widths = map { $_->[1] } @header_dimensions;
@@ -167,7 +166,7 @@ sub calculate_table_dimensions {
     my $x = 0;
     my $row_height = 1;
     for my $cell( @$row ){
-      my $cell_dimensions = $self->calc_value_dimensions( $cell );
+      my $cell_dimensions = $self->calculate_value_dimensions( $cell );
       my ($cell_height, $cell_width) = @$cell_dimensions;
       $max_widths[$x] = $cell_width if !defined($max_widths[$x]) || $cell_width > $max_widths[$x];
       $row_height = $cell_height if $cell_height > $row_height;
@@ -188,7 +187,7 @@ sub calculate_table_dimensions {
   return \%dimensions;
 }
 
-sub calc_value_dimensions {
+sub calculate_value_dimensions {
   my($self, $value) = @_;
   my $value_dimensions = $self->get_string_dimensions($value->[0]);
   if( defined $value->[1]->{padding_top} ){
@@ -363,6 +362,69 @@ sub get_string_dimensions {
   return [ $height, $width ];
 }
 
+__PACKAGE__->meta->make_immutable;
+
 1;
 
 __END__;
+
+=head1 NAME
+
+Cantella::Data::Tabular::Render::PlainText - Render a table in plain text
+
+=head1 SYNOPSYS
+
+=head1 ATTRIBUTES
+
+=head2 newline_string
+
+=head2 corner_string
+
+=head2 vertical_divider
+
+=head2 horizontal_divider
+
+=head2 value_type_to_stringifier_map
+
+=head2 value_type_to_format_options
+
+=head1 METHODS
+
+=head2 render
+
+=head2 render_row
+
+=head2 calculate_table_dimensions
+
+=head2 calculate_value_dimensions
+
+=head2 pad_row_values
+
+=head2 pad_string
+
+=head2 pad_string_to_width
+
+=head2 prepare_table
+
+=head2 prepare_row
+
+=head2 prepare_cell
+
+=head2 stringify_value_by_type
+
+=head2 get_string_width
+
+=head2 get_string_dimensions
+
+=head1 AUTHOR
+
+Guillermo Roditi (groditi) E<lt>groditi@cpan.orgE<gt>
+
+=head1 COPYRIGHT AND LICENSE
+
+This software is copyright (c) 2009 by Guillermo Roditi.
+
+This is free software; you can redistribute it and/or modify it under
+the same terms as the Perl 5 programming language system itself.
+
+=cut
