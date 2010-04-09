@@ -21,21 +21,21 @@ has corner_string => (
   is => 'rw',
   isa => SimpleStr,
   required => 1,
-  default => sub { "++" },
+  default => sub { "+" },
 );
 
 has vertical_divider => (
   is => 'rw',
   isa => SimpleStr,
   required => 1,
-  default => sub { "||" },
+  default => sub { "|" },
 );
 
 has horizontal_divider => (
   is => 'rw',
   isa => SimpleStr,
   required => 1,
-  default => sub { "=" },
+  default => sub { "-" },
 );
 
 has value_type_to_stringifier_map => (
@@ -98,13 +98,16 @@ has value_type_to_format_options => (
   }
 );
 
+#this should be able to output to an arg that was passed in, like a FH, or a
+#scalar ref, or a subref, or whatever.
+#basically, we should be able to render rows and stream out the output, so the
+#the API might still need rethinking.
 sub render {
   my ($self, $table) = @_;
 
   my $value_opts_grid = $self->prepare_table($table);
   my $dimensions = $self->calculate_table_dimensions($value_opts_grid);
 
-  #eventually, these will be customizable
   my $corner = $self->corner_string;
   my $h_div = $self->horizontal_divider;
   my $v_div = $self->vertical_divider;
@@ -131,7 +134,8 @@ sub render {
     push(@output_lines, $self->render_row($row_values, $row_dimensions));
     push(@output_lines, $h_rule_line);
   }
-  return @output_lines;
+
+  return join($self->newline_string, @output_lines);
 }
 
 sub render_row {
@@ -324,9 +328,6 @@ sub prepare_cell {
 
   #in the future, here would be where i copied format_options from
   # $cell->metadata->{format_options} to %format_options
-  #my $dimensions = $self->get_string_dimensions( $value );
-  #$format_options{height} ||= $dimensions->[0];
-  #$format_options{width} ||= $dimensions->[1];
 
   return [ $value, \%format_options];
 }
@@ -374,47 +375,263 @@ Cantella::Data::Tabular::Render::PlainText - Render a table in plain text
 
 =head1 SYNOPSYS
 
+=head1 WARNING
+
+This is pre-alpha software and should be considered experimental. Although
+there is no known defects at the time, there may be some lurking in there.
+Additionally, the API is subject to change. Specifically, all 'rw' attributes
+might be made 'ro'.
+
 =head1 ATTRIBUTES
 
 =head2 newline_string
 
+=over 4
+
+=item B<newline_string> - accessor
+
+=back
+
+Read-write string that represents the sequence to be used to join multi-line
+rows and count the number of rows of lines a value takes. Defaults to "\n"
+
 =head2 corner_string
+
+=over 4
+
+=item B<corner_string> - accessor
+
+=back
+
+Read-write L<SimpleStr|MooseX::Types::Common::String>. The string sequence to
+be used to render the corners of a table. Defaults to "+"
 
 =head2 vertical_divider
 
+=over 4
+
+=item B<vertical_divider> - accessor
+
+=back
+
+Read-write L<SimpleStr|MooseX::Types::Common::String>. The string sequence to
+be used to divide cells and mark the vertical edges of a table. Defaults to "|"
+
 =head2 horizontal_divider
+
+=over 4
+
+=item B<horizontal_divider> - accessor
+
+=back
+
+Read-write L<SimpleStr|MooseX::Types::Common::String>. The string sequence to
+be used to divide rows and mark the horizontal edges of a table. Defaults to "-"
 
 =head2 value_type_to_stringifier_map
 
+=over 4
+
+=item B<value_type_to_stringifier_map> - accessor
+
+=back
+
+A required L<MooseX::TypeMap> object in which the
+L<data|MooseX::TypeMap::Entry/data> slot is a CODE ref which returns a string
+from the value of a cell.
+
+By default, a TypeMap is built which can handle the following types and their
+subtypes:
+
+=over 4
+
+=item B<Value> - returns the scalar passed as-is.
+
+=item B<DateTime> - returns the value of the C<datetime> method
+
+=item B<Int> - returns a string containing the integer %d in printf notation
+
+=item B<Num> - returns a string containing the number with two decimal point accuracy
+
+=back
+
 =head2 value_type_to_format_options
+
+=over 4
+
+=item B<value_type_to_format_options> - accessor
+
+=back
+
+A required L<MooseX::TypeMap> object in which the
+L<data|MooseX::TypeMap::Entry/data> slot is a HASH ref which contains
+additional rendering instructions for the value. At the time of this
+writting the following options are supported:
+
+=over 4
+
+=item B<align> - C<left|center|right>
+
+=item B<valign> - C<top|middle|bottom>
+
+=item B<padding_top> - C<\d+>
+
+=item B<padding_left> - C<\d+>
+
+=item B<padding_bottom> - C<\d+>
+
+=item B<padding_right> - C<\d+>
+
+=item B<pad_format> - (in lieu of C<align>) a C<sprintf> pattern that takes one
+scalar string and one integer representing the width of the final value
+
+=back
 
 =head1 METHODS
 
+=head2 new
+
+=over 4
+
+=item B<arguments:>
+
+=item B<return value:>
+
+=back
+
+Constructor
+
 =head2 render
+
+=over 4
+
+=item B<arguments:> C<$table_object>
+
+=item B<return value:> C<$rendered_table>
+
+=back
+
+Renders a table and returns a single scalar string containing the table.
 
 =head2 render_row
 
-=head2 calculate_table_dimensions
+=over 4
 
-=head2 calculate_value_dimensions
+=item B<arguments:> C<\@row_values, \@row_dimensions>
+
+=item B<return value:>
+
+=back
 
 =head2 pad_row_values
 
+=over 4
+
+=item B<arguments:>
+
+=item B<return value:>
+
+=back
+
 =head2 pad_string
+
+=over 4
+
+=item B<arguments:>
+
+=item B<return value:>
+
+=back
 
 =head2 pad_string_to_width
 
-=head2 prepare_table
+=over 4
 
-=head2 prepare_row
+=item B<arguments:>
 
-=head2 prepare_cell
+=item B<return value:>
+
+=back
 
 =head2 stringify_value_by_type
 
-=head2 get_string_width
+=over 4
+
+=item B<arguments:>
+
+=item B<return value:>
+
+=back
+
+=head2 calculate_table_dimensions
+
+=over 4
+
+=item B<arguments:>
+
+=item B<return value:>
+
+=back
+
+=head2 calculate_value_dimensions
+
+=over 4
+
+=item B<arguments:>
+
+=item B<return value:>
+
+=back
 
 =head2 get_string_dimensions
+
+=over 4
+
+=item B<arguments:>
+
+=item B<return value:>
+
+=back
+
+=head2 get_string_width
+
+=over 4
+
+=item B<arguments:>
+
+=item B<return value:>
+
+=back
+
+=head2 prepare_table
+
+=over 4
+
+=item B<arguments:>
+
+=item B<return value:>
+
+=back
+
+=head2 prepare_row
+
+=over 4
+
+=item B<arguments:>
+
+=item B<return value:>
+
+=back
+
+=head2 prepare_cell
+
+=over 4
+
+=item B<arguments:>
+
+=item B<return value:>
+
+=back
 
 =head1 AUTHOR
 
